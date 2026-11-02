@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#b3283d">
+<title>Hiragana Flash Cards</title>
+<style>
+  :root {
+    --bg: #faf6ef;
+    --ink: #2b2523;
+    --muted: #7a6f69;
+    --accent: #b3283d;
+    --accent-ink: #fff;
+    --card-front: #fffdf8;
+    --card-back: #b3283d;
+    --ok: #2f7d4f;
+    --ko: #c26a1a;
+    --line: #e4dccf;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1c1918;
+      --ink: #f1ebe3;
+      --muted: #a0958d;
+      --card-front: #2a2624;
+      --line: #3a3432;
+    }
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    display: flex; flex-direction: column; align-items: center;
+    padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+  }
+  main { width: 100%; max-width: 440px; flex: 1; display: flex; flex-direction: column; }
+  h1 { font-size: 1.3rem; margin: 4px 0 0; text-align: center; letter-spacing: .02em; }
+  .screen { display: none; flex: 1; flex-direction: column; }
+  .screen.active { display: flex; }
+
+  button {
+    font: inherit; border: 0; border-radius: 14px; padding: 16px 20px;
+    min-height: 52px; cursor: pointer; font-weight: 600;
+  }
+  .primary { background: var(--accent); color: var(--accent-ink); }
+  .ghost { background: transparent; color: var(--muted); border: 1px solid var(--line); }
+  button:active { transform: scale(.98); }
+
+  /* Start */
+  #start { justify-content: center; gap: 18px; text-align: center; }
+  #start .big { font-size: 6rem; line-height: 1; color: var(--accent); font-family: "Hiragino Mincho ProN","Yu Mincho",serif; }
+  #start p { color: var(--muted); margin: 0; }
+  label.opt { display: flex; gap: 10px; align-items: center; justify-content: center; color: var(--muted); }
+  label.opt input { width: 20px; height: 20px; accent-color: var(--accent); }
+  #progress-note { font-size: .9rem; }
+
+  /* Quiz */
+  .topbar { display: flex; align-items: center; gap: 12px; margin: 12px 0; }
+  .bar { flex: 1; height: 8px; background: var(--line); border-radius: 99px; overflow: hidden; }
+  .bar > i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .3s; }
+  .count { color: var(--muted); font-variant-numeric: tabular-nums; font-size: .95rem; }
+
+  .stage { flex: 1; display: flex; align-items: center; justify-content: center; perspective: 1200px; min-height: 280px; }
+  .card {
+    width: 100%; aspect-ratio: 3 / 4; max-height: 60vh; position: relative;
+    transform-style: preserve-3d; transition: transform .55s cubic-bezier(.3,.7,.3,1);
+    cursor: pointer; border: 0; padding: 0; background: none; border-radius: 24px;
+  }
+  .card.flipped { transform: rotateY(180deg); }
+  .face {
+    position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden;
+    border-radius: 24px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    box-shadow: 0 10px 30px rgba(0,0,0,.12);
+  }
+  .front { background: var(--card-front); border: 1px solid var(--line); }
+  .front .kana { font-size: clamp(7rem, 38vw, 11rem); line-height: 1; font-family: "Hiragino Mincho ProN","Yu Mincho",serif; }
+  .back { background: var(--card-back); color: #fff; transform: rotateY(180deg); }
+  .back .romaji { font-size: clamp(4.5rem, 24vw, 7rem); font-weight: 700; line-height: 1; }
+  .hint { position: absolute; bottom: 16px; font-size: .85rem; color: var(--muted); }
+  .back .hint { color: rgba(255,255,255,.7); }
+
+  .answers { display: flex; gap: 12px; margin-top: 16px; min-height: 56px; visibility: hidden; }
+  .answers.show { visibility: visible; }
+  .answers button { flex: 1; color: #fff; }
+  .ko { background: var(--ko); }
+  .ok { background: var(--ok); }
+
+  /* Results */
+  #results { gap: 16px; text-align: center; justify-content: center; }
+  #results .score { font-size: 3.5rem; font-weight: 700; color: var(--accent); }
+  .review { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+  .chip { background: var(--card-front); border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px; font-size: 1.1rem; }
+  .chip small { color: var(--muted); margin-left: 6px; }
+  #results h2 { font-size: 1rem; color: var(--muted); font-weight: 500; margin: 0; }
+
+  footer { margin-top: 12px; text-align: center; }
+  footer button { padding: 8px 12px; min-height: 0; font-size: .85rem; font-weight: 500; }
+
+  @media (prefers-reduced-motion: reduce) { .card { transition: none; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>ひらがな</h1>
+
+  <section id="start" class="screen active">
+    <div class="big">あ</div>
+    <p>Impara gli hiragana a gruppi di 10 carte.<br>Tocca la carta per vedere la lettura.</p>
+    <label class="opt"><input type="checkbox" id="dakuten"> Includi dakuten (が, ぱ…)</label>
+    <p id="progress-note"></p>
+    <button class="primary" id="go">Inizia batch</button>
+  </section>
+
+  <section id="quiz" class="screen">
+    <div class="topbar">
+      <div class="bar"><i id="bar"></i></div>
+      <div class="count" id="count">1/10</div>
+    </div>
+    <div class="stage">
+      <button class="card" id="card" aria-label="Gira la carta">
+        <div class="face front"><div class="kana" id="kana"></div><span class="hint">tocca per girare</span></div>
+        <div class="face back"><div class="romaji" id="romaji"></div><span class="hint">trascrizione</span></div>
+      </button>
+    </div>
+    <div class="answers" id="answers">
+      <button class="ko" id="ko">Da ripassare</button>
+      <button class="ok" id="ok">Lo sapevo</button>
+    </div>
+  </section>
+
+  <section id="results" class="screen">
+    <div class="score" id="score"></div>
+    <div id="verdict"></div>
+    <div id="review-wrap" hidden>
+      <h2>Da ripassare</h2>
+      <div class="review" id="review"></div>
+    </div>
+    <button class="primary" id="next">Prossimo batch</button>
+    <button class="ghost" id="home">Esci</button>
+  </section>
+
+  <footer><button class="ghost" id="reset">Azzera progressi</button></footer>
+</main>
+
+<script>
+const BASE = `あ a|い i|う u|え e|お o|か ka|き ki|く ku|け ke|こ ko|さ sa|し shi|す su|せ se|そ so|た ta|ち chi|つ tsu|て te|と to|な na|に ni|ぬ nu|ね ne|の no|は ha|ひ hi|ふ fu|へ he|ほ ho|ま ma|み mi|む mu|め me|も mo|や ya|ゆ yu|よ yo|ら ra|り ri|る ru|れ re|ろ ro|わ wa|を wo|ん n`;
+const DAKU = `が ga|ぎ gi|ぐ gu|げ ge|ご go|ざ za|じ ji|ず zu|ぜ ze|ぞ zo|だ da|ぢ ji|づ zu|で de|ど do|ば ba|び bi|ぶ bu|べ be|ぼ bo|ぱ pa|ぴ pi|ぷ pu|ぺ pe|ぽ po`;
+const parse = s => s.split('|').map(x => { const [k, r] = x.split(' '); return { k, r }; });
+const BATCH = 10, KEY = 'hiragana-known-v1', OPT = 'hiragana-daku-v1';
+
+const $ = id => document.getElementById(id);
+let known = new Set(), batch = [], idx = 0, wrong = [], flipped = false;
+
+try { known = new Set(JSON.parse(localStorage.getItem(KEY) || '[]')); } catch (e) {}
+try { $('dakuten').checked = localStorage.getItem(OPT) === '1'; } catch (e) {}
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify([...known])); } catch (e) {} };
+
+const pool = () => parse(BASE).concat($('dakuten').checked ? parse(DAKU) : []);
+const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.random() * (i + 1) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; };
+
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.toggle('active', s.id === id));
+}
+
+function updateNote() {
+  const p = pool(), n = p.filter(c => known.has(c.k)).length;
+  $('progress-note').textContent = `Conosciuti: ${n} / ${p.length}`;
+}
+
+function buildBatch() {
+  const p = pool();
+  const unknown = shuffle(p.filter(c => !known.has(c.k)));
+  const rest = shuffle(p.filter(c => known.has(c.k)));
+  return shuffle(unknown.concat(rest).slice(0, BATCH));
+}
+
+function startBatch() {
+  batch = buildBatch(); idx = 0; wrong = [];
+  show('quiz'); showCard();
+}
+
+function showCard() {
+  const c = batch[idx];
+  flipped = false;
+  $('card').classList.remove('flipped');
+  $('answers').classList.remove('show');
+  $('count').textContent = `${idx + 1}/${batch.length}`;
+  $('bar').style.width = `${idx / batch.length * 100}%`;
+  $('kana').textContent = c.k;
+  // aggiorna il retro solo dopo che la carta è tornata sul fronte
+  setTimeout(() => { $('romaji').textContent = c.r; }, 300);
+}
+
+function flip() {
+  if (flipped) return;
+  flipped = true;
+  $('card').classList.add('flipped');
+  $('answers').classList.add('show');
+}
+
+function answer(okay) {
+  if (!flipped) return;
+  const c = batch[idx];
+  if (okay) known.add(c.k); else { known.delete(c.k); wrong.push(c); }
+  save();
+  if (++idx >= batch.length) return finish();
+  showCard();
+}
+
+function finish() {
+  const good = batch.length - wrong.length;
+  $('score').textContent = `${good}/${batch.length}`;
+  $('verdict').textContent = wrong.length === 0 ? 'Perfetto! 🎉' : 'Bel lavoro, ripassa questi:';
+  $('review-wrap').hidden = wrong.length === 0;
+  $('review').innerHTML = '';
+  wrong.forEach(c => {
+    const d = document.createElement('div');
+    d.className = 'chip';
+    d.textContent = c.k;
+    const s = document.createElement('small'); s.textContent = c.r;
+    d.appendChild(s); $('review').appendChild(d);
+  });
+  show('results');
+}
+
+$('go').onclick = startBatch;
+$('next').onclick = startBatch;
+$('home').onclick = () => { updateNote(); show('start'); };
+$('card').onclick = flip;
+$('ok').onclick = () => answer(true);
+$('ko').onclick = () => answer(false);
+$('dakuten').onchange = () => {
+  try { localStorage.setItem(OPT, $('dakuten').checked ? '1' : '0'); } catch (e) {}
+  updateNote();
+};
+$('reset').onclick = () => {
+  if (confirm('Azzerare tutti i progressi?')) { known.clear(); save(); updateNote(); show('start'); }
+};
+updateNote();
+</script>
+</body>
+</html>
